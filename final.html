@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>Locate the user</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.6.1/mapbox-gl.css" rel="stylesheet" />
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.6.1/mapbox-gl.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="map" class="map"></div>
+    <script type="module">
+        const marker = [];
+        var counter = 0;
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+        import {
+            getFirestore,
+            doc,
+            getDoc,
+            getDocs,
+            query,
+            onSnapshot,
+            collection,
+            addDoc,
+        } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDHoEO_aAbu0p9wf_Zm4YQyasfSwArG0IE",
+            authDomain: "brixxsmapbox.firebaseapp.com",
+            projectId: "brixxsmapbox",
+            storageBucket: "brixxsmapbox.appspot.com",
+            messagingSenderId: "685690638308",
+            appId: "1:685690638308:web:08db62e4cbcd5fe08f01f1",
+            measurementId: "G-3F81LN7TR9",
+        };
+        mapboxgl.accessToken =
+            "pk.eyJ1IjoiZGV2ZWxvcG1lbnQxIiwiYSI6ImNreDduNGZiNDA4M2cyb3FjaHdkMzRmOTAifQ.rmaNEeyqCmavn7PbFTSzmw";
+        const map = new mapboxgl.Map({
+            container: "map",
+            style: "mapbox://styles/mapbox/streets-v11",
+            center: [75.8651116, 22.753421],
+            zoom: 16,
+        });
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore();
+        let userNameList = [];
+        let userNameListSubCollection = [];
+        var listofuser;
+        var counter = 0;
+        var FullUserNameList = [];
+        let docsSnapFullData = [[]];
+        var latitude;
+        var longitude;
+        var currentMarkers = [];
+        let docsSnap2 = [];
+        var oneobjectThatHoldData = [];
+        var colorCode = ["#FF5733", "#EBFA00", "#0DF9EE", "#0F35F4", "#64646C", "#FE8F09",]
+        map.on("load", async () => {
+            // const updateSource = setInterval(async () => {
+            await getLocation();
+            // }, 50000);
+
+            FullUserNameList = [];
+            userNameList = [];
+            userNameListSubCollection = [];
+            currentMarkers = [];
+            async function getLocation() {
+                const docsSnap = await getDocs(collection(db, "collection"));
+                docsSnap.forEach((doc) => {
+                    console.log(doc.data());
+                    userNameList[counter] = doc.data()["userName"];
+                    userNameListSubCollection[counter] = doc.data()["userName"] + "123";
+                    FullUserNameList[counter] = doc.data();
+                    counter = counter + 1;
+                });
+
+                counter = 0;
+
+                // console.log(
+                //     `-------------------------------NO OF USER  ${FullUserNameList.length}`
+                // );
+
+                for (let i = 0; i < FullUserNameList.length; i++) {
+                    docsSnap2[i] = await getDocs(
+                        collection(
+                            db,
+                            `collection/${userNameList[i]}/${userNameListSubCollection[i]}`
+                        )
+                    );
+
+                    docsSnap2[i].forEach((doc) => {
+                        var temp;
+                        temp = [Number(`${doc.data().long}`), Number(`${doc.data().lat}`)];
+                        docsSnapFullData.push(temp);
+                        counter = counter + 1;
+                        // console.log(docsSnapFullData);
+                    });
+
+                    oneobjectThatHoldData[i] = docsSnapFullData;
+                    docsSnapFullData = [];
+
+                }
+                // console.log(oneobjectThatHoldData[0]);
+                var geojsonDataFeature = [];
+
+
+
+                var geojsonData = {
+                    type: "geojson",
+                    data: {
+                        type: "FeatureCollection",
+                        features: [
+                            //    geojsonDataFeature
+                            // {
+                            //     type: "Feature",
+                            //     properties: {
+                            //         color: colorCode[0], // red
+                            //     },
+                            //     geometry: {
+                            //         type: "LineString",
+                            //         coordinates:
+                            //             oneobjectThatHoldData[0],
+
+                            //     },
+                            // },
+                            // {
+                            //     type: "Feature",
+                            //     properties: {
+                            //         color: colorCode[1], // blue
+                            //     },
+                            //     geometry: {
+                            //         type: "LineString",
+                            //         coordinates:
+                            //             oneobjectThatHoldData[1]
+
+
+                            //     },
+                            // },
+                        ],
+                    },
+                }
+                for (var j = 0; j < userNameList.length; j++) {
+                    geojsonData.data.features.push({
+                        type: "Feature",
+                        properties: {
+                            color: colorCode[j], // red
+                        },
+                        geometry: {
+                            type: "LineString",
+                            coordinates:
+                                oneobjectThatHoldData[j],
+
+                        },
+                    })}
+
+                    var temp = [{
+                        type: "Feature",
+                        properties: {
+                            color: colorCode[0], // red
+                        },
+                        geometry: {
+                            type: "LineString",
+                            coordinates:
+                                oneobjectThatHoldData[0],
+
+                        },
+                    },
+                    {
+                        type: "Feature",
+                        properties: {
+                            color: colorCode[1], // blue
+                        },
+                        geometry: {
+                            type: "LineString",
+                            coordinates:
+                                oneobjectThatHoldData[1]
+
+
+                        },
+                    },]
+
+
+
+                    console.log(temp);
+
+                    console.log(geojsonDataFeature);
+
+                    // var geojsonData = {
+                    //     type: "geojson",
+                    //     data: {
+                    //         type: "FeatureCollection",
+                    //         features: [
+                    //        geojsonDataFeature
+                    //             // {
+                    //             //     type: "Feature",
+                    //             //     properties: {
+                    //             //         color: colorCode[0], // red
+                    //             //     },
+                    //             //     geometry: {
+                    //             //         type: "LineString",
+                    //             //         coordinates:
+                    //             //             oneobjectThatHoldData[0],
+
+                    //             //     },
+                    //             // },
+                    //             // {
+                    //             //     type: "Feature",
+                    //             //     properties: {
+                    //             //         color: colorCode[1], // blue
+                    //             //     },
+                    //             //     geometry: {
+                    //             //         type: "LineString",
+                    //             //         coordinates:
+                    //             //             oneobjectThatHoldData[1]
+
+
+                    //             //     },
+                    //             // },
+                    //         ],
+                    //     },
+                    // }
+                    map.addSource("lines", geojsonData);
+                    var mapdoc = [[-122.4833858013153, 37.829607404976734],
+                    [-122.4830961227417, 37.82932776098012],
+                    [-122.4830746650696, 37.82932776098012],
+                    [-122.48218417167662, 37.82889558180985],
+                    [-122.48218417167662, 37.82890193740421],
+                    [-122.48221099376678, 37.82868372835086],
+                    [-122.4822163581848, 37.82868372835086],
+                    [-122.48205006122589, 37.82801003030873],
+                    ];
+                    console.log(mapdoc);
+                    console.log(oneobjectThatHoldData[1]);
+                    map.addLayer({
+                        id: "lines",
+                        type: "line",
+                        source: "lines",
+                        paint: {
+                            "line-width": 5,
+                            // Use a get expression (https://docs.mapbox.com/mapbox-gl-js/style-spec/#expressions-get)
+                            // to set the line-color to a feature property value.
+                            "line-color": ["get", "color"],
+                        },
+                    });
+                }
+            });
+    </script>
+</body>
+
+</html>
